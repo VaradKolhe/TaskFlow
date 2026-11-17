@@ -22,25 +22,25 @@ pipeline {
         }
 
         stage('Install Dependencies') {
-    steps {
-        bat '''@echo off
-echo Creating Python virtual environment...
+            steps {
+                bat '''@echo off
+        echo Creating Python virtual environment...
 
-"C:/Users/lenovo/AppData/Local/Programs/Python/Python313/python.exe" -m venv .venv
-if errorlevel 1 exit /b 1
+        "C:/Users/lenovo/AppData/Local/Programs/Python/Python313/python.exe" -m venv .venv
+        if errorlevel 1 exit /b 1
 
-echo Installing dependencies...
+        echo Installing dependencies...
 
-.venv/Scripts/python.exe -m pip install --upgrade pip
-if errorlevel 1 exit /b 1
+        call ".venv\\Scripts\\python.exe" -m pip install --upgrade pip
+        if errorlevel 1 exit /b 1
 
-.venv/Scripts/python.exe -m pip install -r requirements.txt
-if errorlevel 1 exit /b 1
+        call ".venv\\Scripts\\python.exe" -m pip install -r requirements.txt
+        if errorlevel 1 exit /b 1
 
-echo Dependencies installed successfully.
-'''
-    }
-}
+        echo Dependencies installed successfully.
+        '''
+            }
+        }
 
         stage('Test') {
             steps {
