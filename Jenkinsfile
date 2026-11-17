@@ -8,6 +8,8 @@ pipeline {
     }
 
     environment {
+        PYTHON_EXE = 'C:/Users/lenovo/AppData/Local/Programs/Python/Python313/python.exe'
+        VENV_PYTHON = '.venv/Scripts/python.exe'
         IMAGE_NAME = 'taskflow:latest'
         CONTAINER_NAME = 'taskflow'
         HOST_PORT = '8501'
@@ -24,34 +26,45 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 bat '''@echo off
-        echo Creating Python virtual environment...
+echo ========================================
+echo INSTALLING PYTHON DEPENDENCIES
+echo ========================================
 
-        "C:/Users/lenovo/AppData/Local/Programs/Python/Python313/python.exe" -m venv .venv
-        if errorlevel 1 exit /b 1
+"%PYTHON_EXE%" --version
+if errorlevel 1 exit /b 1
 
-        echo Installing dependencies...
+echo Creating virtual environment...
+"%PYTHON_EXE%" -m venv .venv
+if errorlevel 1 exit /b 1
 
-        call ".venv\\Scripts\\python.exe" -m pip install --upgrade pip
-        if errorlevel 1 exit /b 1
+echo Upgrading pip...
+call "%VENV_PYTHON%" -m pip install --upgrade pip
+if errorlevel 1 exit /b 1
 
-        call ".venv\\Scripts\\python.exe" -m pip install -r requirements.txt
-        if errorlevel 1 exit /b 1
+echo Installing requirements...
+call "%VENV_PYTHON%" -m pip install -r requirements.txt
+if errorlevel 1 exit /b 1
 
-        echo Dependencies installed successfully.
-        '''
+echo Dependencies installed successfully.
+'''
             }
         }
 
         stage('Test') {
             steps {
                 bat '''@echo off
-echo Running TaskFlow automated tests...
-.venv/Scripts/python.exe -m pytest -q
+echo ========================================
+echo RUNNING AUTOMATED TESTS
+echo ========================================
+
+call "%VENV_PYTHON%" -m pytest -q
+
 if errorlevel 1 (
     echo ERROR: Automated tests failed.
     exit /b 1
 )
-echo All tests passed.
+
+echo All tests passed successfully.
 '''
             }
         }
@@ -59,7 +72,10 @@ echo All tests passed.
         stage('Build Docker Image') {
             steps {
                 bat '''@echo off
-echo Checking Docker availability...
+echo ========================================
+echo BUILDING DOCKER IMAGE
+echo ========================================
+
 where docker
 if errorlevel 1 (
     echo ERROR: Docker CLI not found.
@@ -72,7 +88,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Building TaskFlow Docker image...
 docker build -t "%IMAGE_NAME%" .
 if errorlevel 1 (
     echo ERROR: Docker image build failed.
@@ -87,17 +102,26 @@ echo Docker image built successfully.
         stage('Deploy') {
             steps {
                 bat '''@echo off
-echo Checking existing TaskFlow container...
+echo ========================================
+echo DEPLOYING TASKFLOW
+echo ========================================
+
+echo Checking existing container...
 docker inspect "%CONTAINER_NAME%" >NUL 2>&1
 
 if not errorlevel 1 (
-    echo Removing previous TaskFlow container...
+    echo Removing previous container...
     docker rm -f "%CONTAINER_NAME%"
     if errorlevel 1 exit /b 1
 )
 
-echo Deploying TaskFlow...
-docker run -d --name "%CONTAINER_NAME%" --restart unless-stopped -p "%HOST_PORT%:8501" -v taskflow-data:/data "%IMAGE_NAME%"
+echo Starting TaskFlow container...
+docker run -d ^
+    --name "%CONTAINER_NAME%" ^
+    --restart unless-stopped ^
+    -p "%HOST_PORT%:8501" ^
+    -v taskflow-data:/data ^
+    "%IMAGE_NAME%"
 
 if errorlevel 1 (
     echo ERROR: Deployment failed.
