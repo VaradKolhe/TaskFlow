@@ -31,7 +31,7 @@ terraform/             Local Docker image and container resources
 
 - Python 3.11 or newer for local development.
 - Docker Engine and Docker CLI for container workflows.
-- Jenkins with a Linux agent that has Python 3, Docker CLI, and access to a Docker daemon for the pipeline.
+- For the checked-in Jenkins pipeline: Jenkins running natively on Windows, the Python launcher (`py`) with Python 3, Docker CLI, and a Jenkins service account that can access the Docker daemon.
 - Terraform 1.3 or newer for the optional Terraform deployment.
 
 ## Run locally
@@ -75,7 +75,9 @@ The container stores its database at `/data/taskflow.db`. To stop and remove the
 
 ## Jenkins CI/CD
 
-Create a Pipeline job in Jenkins, connect it to this Git repository, and ensure the selected agent can access Python 3 and a Docker daemon. The checked-in `Jenkinsfile` uses `checkout scm`, creates a workspace virtual environment, installs dependencies, runs pytest, builds `taskflow:latest`, then replaces the local `taskflow` container on host port 8501. It mounts the named `taskflow-data` volume so deployments keep application data.
+Create a Pipeline job in Jenkins, connect it to this Git repository, and configure the `main` branch. The checked-in `Jenkinsfile` targets a native Windows Jenkins built-in node: it uses `checkout scm` exactly once, creates `.venv` with `py -3`, installs dependencies and runs pytest through `.venv\Scripts\python.exe`, builds `taskflow:latest` with Docker CLI, then safely removes and replaces the local `taskflow` container on host port 8501. It mounts the named `taskflow-data` volume so deployments keep application data. Failed tests, missing Docker CLI, Docker daemon access errors, image build errors, and deployment errors fail the pipeline.
+
+The Jenkins Windows service account must have Python and Docker available on its PATH and permission to use the Docker daemon. For Docker Desktop, verify Docker Desktop is running and grant that account access to the Docker Desktop engine (including any required `docker-users` membership), then restart the Jenkins service so it receives the updated account permissions. The pipeline checks `docker version` before building; a CLI installation alone does not prove that the service account can reach the daemon.
 
 The pipeline is declarative and requires no credentials unless your Git source itself requires them; configure those in Jenkins' SCM settings rather than in the repository. Run **Build Now** (or enable a webhook/polling trigger in the job configuration) and inspect the stage output in **Console Output**. The deploy stage removes a same-named prior container and starts the image only after tests and image build succeed.
 
